@@ -28,14 +28,14 @@
  * 
  * @return STATUS_OK on success, STATUS_??? otherwise.
  */
-MFRC522::StatusCode MFRC522Extended::PICC_Select(	Uid *uid,			///< Pointer to Uid struct. Normally output, but can also be used to supply a known UID.
+MFRC522_BASE::StatusCode MFRC522Extended::PICC_Select(	Uid *uid,			///< Pointer to Uid struct. Normally output, but can also be used to supply a known UID.
 											byte validBits		///< The number of known UID bits supplied in *uid. Normally 0. If set you must also supply uid->size.
 										 ) {
 	bool uidComplete;
 	bool selectDone;
 	bool useCascadeTag;
 	byte cascadeLevel = 1;
-	MFRC522::StatusCode result;
+	MFRC522_BASE::StatusCode result;
 	byte count;
 	byte index;
 	byte uidIndex;					// The first index in uid->uidByte[] that is used in the current Cascade Level.
@@ -342,11 +342,11 @@ MFRC522::StatusCode MFRC522Extended::PICC_Select(	Uid *uid,			///< Pointer to Ui
  *
  * @return STATUS_OK on success, STATUS_??? otherwise.
  */
-MFRC522::StatusCode MFRC522Extended::PICC_RequestATS(Ats *ats) 
+MFRC522_BASE::StatusCode MFRC522Extended::PICC_RequestATS(Ats *ats) 
 {
 	// TODO unused variable
 	//byte count;
-	MFRC522::StatusCode result;
+	MFRC522_BASE::StatusCode result;
 
 	byte bufferATS[FIFO_SIZE];
 	byte bufferSize = FIFO_SIZE;
@@ -529,7 +529,7 @@ MFRC522::StatusCode MFRC522Extended::PICC_RequestATS(Ats *ats)
  *
  * @return STATUS_OK on success, STATUS_??? otherwise.
  */
-MFRC522::StatusCode MFRC522Extended::PICC_PPS()
+MFRC522_BASE::StatusCode MFRC522Extended::PICC_PPS()
 {
 	StatusCode result;
 
@@ -567,7 +567,7 @@ MFRC522::StatusCode MFRC522Extended::PICC_PPS()
  *
  * @return STATUS_OK on success, STATUS_??? otherwise.
  */
-MFRC522::StatusCode MFRC522Extended::PICC_PPS(TagBitRates sendBitRate,	          ///< DS
+MFRC522_BASE::StatusCode MFRC522Extended::PICC_PPS(TagBitRates sendBitRate,	          ///< DS
                                       TagBitRates receiveBitRate		  ///< DR
 ) {
 	StatusCode result;
@@ -660,9 +660,9 @@ MFRC522::StatusCode MFRC522Extended::PICC_PPS(TagBitRates sendBitRate,	         
 // Functions for communicating with ISO/IEC 14433-4 cards
 /////////////////////////////////////////////////////////////////////////////////////
 
-MFRC522::StatusCode MFRC522Extended::TCL_Transceive(PcbBlock *send, PcbBlock *back)
+MFRC522_BASE::StatusCode MFRC522Extended::TCL_Transceive(PcbBlock *send, PcbBlock *back)
 {
-	MFRC522::StatusCode result;
+	MFRC522_BASE::StatusCode result;
 	byte inBuffer[FIFO_SIZE];
 	byte inBufferSize = FIFO_SIZE;
 	byte outBuffer[send->inf.size + 5]; // PCB + CID + NAD + INF + EPILOGUE (CRC)
@@ -737,7 +737,7 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(PcbBlock *send, PcbBlock *ba
 
 		// Verify CRC_A - do our own calculation and store the control in controlBuffer.
 		byte controlBuffer[2];
-		MFRC522::StatusCode status = PCD_CalculateCRC(inBuffer, inBufferSize - 2, controlBuffer);
+		MFRC522_BASE::StatusCode status = PCD_CalculateCRC(inBuffer, inBufferSize - 2, controlBuffer);
 		if (status != STATUS_OK) {
 			return status;
 		}
@@ -772,9 +772,9 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(PcbBlock *send, PcbBlock *ba
 /**
  * Send an I-Block (Application)
  */
-MFRC522::StatusCode MFRC522Extended::TCL_Transceive(TagInfo *tag, byte *sendData, byte sendLen, byte *backData, byte *backLen)
+MFRC522_BASE::StatusCode MFRC522Extended::TCL_Transceive(TagInfo *tag, byte *sendData, byte sendLen, byte *backData, byte *backLen)
 {
-	MFRC522::StatusCode result;
+	MFRC522_BASE::StatusCode result;
 
 	PcbBlock out;
 	PcbBlock in;
@@ -821,7 +821,7 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(TagInfo *tag, byte *sendData
 	// Swap block number on success
 	tag->blockNumber = !tag->blockNumber;
 
-	if (backData && (backLen > 0)) {
+	if (backData && (backLen != 0)) {
 		if (*backLen < in.inf.size)
 			return STATUS_NO_ROOM;
 
@@ -844,7 +844,7 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(TagInfo *tag, byte *sendData
 		if (result != STATUS_OK)
 			return result;
 
-		if (backData && (backLen > 0)) {
+		if (backData && (backLen != 0)) {
 			if ((*backLen + ackDataSize) > totalBackLen)
 				return STATUS_NO_ROOM;
 
@@ -859,9 +859,9 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(TagInfo *tag, byte *sendData
 /**
  * Send R-Block to the PICC.
  */
-MFRC522::StatusCode MFRC522Extended::TCL_TransceiveRBlock(TagInfo *tag, bool ack, byte *backData, byte *backLen)
+MFRC522_BASE::StatusCode MFRC522Extended::TCL_TransceiveRBlock(TagInfo *tag, bool ack, byte *backData, byte *backLen)
 {
-	MFRC522::StatusCode result;
+	MFRC522_BASE::StatusCode result;
 
 	PcbBlock out;
 	PcbBlock in;
@@ -920,9 +920,9 @@ MFRC522::StatusCode MFRC522Extended::TCL_TransceiveRBlock(TagInfo *tag, bool ack
 /**
  * Send an S-Block to deselect the card.
  */
-MFRC522::StatusCode MFRC522Extended::TCL_Deselect(TagInfo *tag)
+MFRC522_BASE::StatusCode MFRC522Extended::TCL_Deselect(TagInfo *tag)
 {
-	MFRC522::StatusCode result;
+	MFRC522_BASE::StatusCode result;
 	byte outBuffer[4];
 	byte outBufferSize = 1;
 	byte inBuffer[FIFO_SIZE];
@@ -955,7 +955,7 @@ MFRC522::StatusCode MFRC522Extended::TCL_Deselect(TagInfo *tag)
  *
  * @return PICC_Type
  */
-MFRC522::PICC_Type MFRC522Extended::PICC_GetType(TagInfo *tag		///< The TagInfo returned from PICC_Select().
+MFRC522_BASE::PICC_Type MFRC522Extended::PICC_GetType(TagInfo *tag		///< The TagInfo returned from PICC_Select().
 ) {
 	// http://www.nxp.com/documents/application_note/AN10833.pdf 
 	// 3.2 Coding of Select Acknowledge (SAK)
@@ -993,7 +993,7 @@ void MFRC522Extended::PICC_DumpToSerial(TagInfo *tag)
 	PICC_DumpDetailsToSerial(tag);
 
 	// Dump contents
-	PICC_Type piccType = MFRC522::PICC_GetType(tag->uid.sak);
+	PICC_Type piccType = MFRC522_BASE::PICC_GetType(tag->uid.sak);
 	switch (piccType) {
 		case PICC_TYPE_MIFARE_MINI:
 		case PICC_TYPE_MIFARE_1K:
@@ -1109,7 +1109,7 @@ bool MFRC522Extended::PICC_IsNewCardPresent() {
 	// Reset ModWidthReg
 	PCD_WriteRegister(ModWidthReg, 0x26);
 
-	MFRC522::StatusCode result = PICC_RequestA(bufferATQA, &bufferSize);
+	MFRC522_BASE::StatusCode result = PICC_RequestA(bufferATQA, &bufferSize);
 
 	if (result == STATUS_OK || result == STATUS_COLLISION) {
 		tag.atqa = ((uint16_t)bufferATQA[1] << 8) | bufferATQA[0];
@@ -1149,7 +1149,7 @@ bool MFRC522Extended::PICC_IsNewCardPresent() {
  * @return bool
  */
 bool MFRC522Extended::PICC_ReadCardSerial() {
-	MFRC522::StatusCode result = PICC_Select(&tag.uid);
+	MFRC522_BASE::StatusCode result = PICC_Select(&tag.uid);
 
 	// Backward compatibility
 	uid.size = tag.uid.size;

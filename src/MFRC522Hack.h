@@ -2,8 +2,8 @@
 #define MFRC522HACK_H
 
 #include <Arduino.h>
-#include "MFRC522.h"
-#include "MFRC522Debug.h"
+#include <MFRC522.h>
+#include <MFRC522Debug.h>
 
 class MFRC522Hack {
 private:

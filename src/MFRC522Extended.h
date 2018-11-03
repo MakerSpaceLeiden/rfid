@@ -7,9 +7,9 @@
 #define MFRC522Extended_h
 
 #include <Arduino.h>
-#include "MFRC522.h"
+#include <MFRC522.h>
 
-class MFRC522Extended : public MFRC522 {
+class MFRC522Extended : public MFRC522_SPI {
 		
 public:
 	// ISO/IEC 14443-4 bit rates
@@ -77,8 +77,8 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////
 	// Contructors
 	/////////////////////////////////////////////////////////////////////////////////////
-	MFRC522Extended() : MFRC522() {};
-	MFRC522Extended(uint8_t ss, uint8_t rst) : MFRC522(ss, rst) {};
+	// MFRC522Extended() : MFRC522_SPI() {};
+	// MFRC522Extended(uint8_t ss, uint8_t rst) : MFRC522_SPI(ss, rst) {};
 	
 	/////////////////////////////////////////////////////////////////////////////////////
 	// Functions for communicating with PICCs
@@ -100,13 +100,13 @@ public:
 	// Support functions
 	/////////////////////////////////////////////////////////////////////////////////////
 	static PICC_Type PICC_GetType(TagInfo *tag);
-	using MFRC522::PICC_GetType;// // make old PICC_GetType(byte sak) available, otherwise would be hidden by PICC_GetType(TagInfo *tag)
+	using MFRC522_BASE::PICC_GetType;// // make old PICC_GetType(byte sak) available, otherwise would be hidden by PICC_GetType(TagInfo *tag)
 
 	// Support functions for debuging
 	void PICC_DumpToSerial(TagInfo *tag);
-	using MFRC522::PICC_DumpToSerial; // make old PICC_DumpToSerial(Uid *uid) available, otherwise would be hidden by PICC_DumpToSerial(TagInfo *tag)
+	using MFRC522_BASE::PICC_DumpToSerial; // make old PICC_DumpToSerial(Uid *uid) available, otherwise would be hidden by PICC_DumpToSerial(TagInfo *tag)
 	void PICC_DumpDetailsToSerial(TagInfo *tag);
-	using MFRC522::PICC_DumpDetailsToSerial; // make old PICC_DumpDetailsToSerial(Uid *uid) available, otherwise would be hidden by PICC_DumpDetailsToSerial(TagInfo *tag)
+	using MFRC522_BASE::PICC_DumpDetailsToSerial; // make old PICC_DumpDetailsToSerial(Uid *uid) available, otherwise would be hidden by PICC_DumpDetailsToSerial(TagInfo *tag)
 	void PICC_DumpISO14443_4(TagInfo *tag);
 	
 	/////////////////////////////////////////////////////////////////////////////////////

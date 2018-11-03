@@ -27,9 +27,9 @@ bool MFRC522Hack::MIFARE_OpenUidBackdoor(const bool logErrors) const {
 						  this will contain amount of valid response bits. */
 	byte response[32]; // Card's response is written here
 	byte received;
-	MFRC522::StatusCode status = _device->PCD_TransceiveData(&cmd, (byte) 1, response, &received, &validBits, (byte) 0,
+	MFRC522_BASE::StatusCode status = _device->PCD_TransceiveData(&cmd, (byte) 1, response, &received, &validBits, (byte) 0,
 														 false); // 40
-	if (status != MFRC522::STATUS_OK) {
+	if (status != MFRC522_BASE::STATUS_OK) {
 		if (logErrors) {
 			Serial.println(
 					F("Card did not respond to 0x40 after HALT command. Are you sure it is a UID changeable one?"));
@@ -52,7 +52,7 @@ bool MFRC522Hack::MIFARE_OpenUidBackdoor(const bool logErrors) const {
 	cmd = 0x43;
 	validBits = 8;
 	status = _device->PCD_TransceiveData(&cmd, (byte) 1, response, &received, &validBits, (byte) 0, false); // 43
-	if (status != MFRC522::STATUS_OK) {
+	if (status != MFRC522_BASE::STATUS_OK) {
 		if (logErrors) {
 			Serial.println(F("Error in communication at command 0x43, after successfully executing 0x40"));
 			Serial.print(F("Error name: "));
@@ -94,11 +94,11 @@ bool MFRC522Hack::MIFARE_SetUid(const byte *newUid, const byte uidSize, const bo
 	}
 	
 	// Authenticate for reading
-	MFRC522::MIFARE_Key key = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-	MFRC522::StatusCode status = _device->PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, (byte) 1, &key, &(_device->uid));
-	if (status != MFRC522::STATUS_OK) {
+	MFRC522_BASE::MIFARE_Key key = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+	MFRC522_BASE::StatusCode status = _device->PCD_Authenticate(MFRC522_BASE::PICC_CMD_MF_AUTH_KEY_A, (byte) 1, &key, &(_device->uid));
+	if (status != MFRC522_BASE::STATUS_OK) {
 		
-		if (status == MFRC522::STATUS_TIMEOUT) {
+		if (status == MFRC522_BASE::STATUS_TIMEOUT) {
 			// We get a read timeout if no card is selected yet, so let's select one
 			
 			// Wake the card up again if sleeping
@@ -111,8 +111,8 @@ bool MFRC522Hack::MIFARE_SetUid(const byte *newUid, const byte uidSize, const bo
 				return false;
 			}
 			
-			status = _device->PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, (byte) 1, &key, &(_device->uid));
-			if (status != MFRC522::STATUS_OK) {
+			status = _device->PCD_Authenticate(MFRC522_BASE::PICC_CMD_MF_AUTH_KEY_A, (byte) 1, &key, &(_device->uid));
+			if (status != MFRC522_BASE::STATUS_OK) {
 				// We tried, time to give up
 				if (logErrors) {
 					Serial.println(F("Failed to authenticate to card for reading, could not set UID: "));
@@ -133,7 +133,7 @@ bool MFRC522Hack::MIFARE_SetUid(const byte *newUid, const byte uidSize, const bo
 	byte block0_buffer[18];
 	byte byteCount = sizeof(block0_buffer);
 	status = _device->MIFARE_Read((byte) 0, block0_buffer, &byteCount);
-	if (status != MFRC522::STATUS_OK) {
+	if (status != MFRC522_BASE::STATUS_OK) {
 		if (logErrors) {
 			Serial.print(F("MIFARE_Read() failed: "));
 			Serial.println(MFRC522Debug::GetStatusCodeName(status));
@@ -165,7 +165,7 @@ bool MFRC522Hack::MIFARE_SetUid(const byte *newUid, const byte uidSize, const bo
 	
 	// Write modified block 0 back to card
 	status = _device->MIFARE_Write((byte) 0, block0_buffer, (byte) 16);
-	if (status != MFRC522::STATUS_OK) {
+	if (status != MFRC522_BASE::STATUS_OK) {
 		if (logErrors) {
 			Serial.print(F("MIFARE_Write() failed: "));
 			Serial.println(MFRC522Debug::GetStatusCodeName(status));
@@ -191,8 +191,8 @@ bool MFRC522Hack::MIFARE_UnbrickUidSector(const bool logErrors) const {
 							0x00};
 	
 	// Write modified block 0 back to card
-	MFRC522::StatusCode status = _device->MIFARE_Write((byte) 0, block0_buffer, (byte) 16);
-	if (status != MFRC522::STATUS_OK) {
+	MFRC522_BASE::StatusCode status = _device->MIFARE_Write((byte) 0, block0_buffer, (byte) 16);
+	if (status != MFRC522_BASE::STATUS_OK) {
 		if (logErrors) {
 			Serial.print(F("MIFARE_Write() failed: "));
 			Serial.println(MFRC522Debug::GetStatusCodeName(status));
