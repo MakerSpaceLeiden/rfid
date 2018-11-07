@@ -1,7 +1,7 @@
 {
   "name": "MFRC522",
   "keywords": "rfid, spi",
-  "description": "Read a card using a MFRC522 reader on your SPI interface",
+  "description": "Read a card using a MFRC522 reader on your SPI, I2C or UART interface",
   "repository":
   {
     "type": "git",
@@ -10,5 +10,5 @@
   "version": "1.4.3",
   "exclude": "doc",
   "frameworks": "arduino",
-  "platforms": ["atmelavr", "ststm32", "teensy", "espressif8266","samd"]
+  "platforms": ["atmelavr", "ststm32", "teensy", "espressif8266","samd","esp32"]
 }

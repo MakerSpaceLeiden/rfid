@@ -164,12 +164,12 @@ MFRC522::StatusCode MFRC522Extended::PICC_Select(	Uid *uid,			///< Pointer to Ui
 			
 			// Set bit adjustments
 			rxAlign = txLastBits;											// Having a separate variable is overkill. But it makes the next line easier to read.
-			PCD_WriteRegister(BitFramingReg, (rxAlign << 4) + txLastBits);	// RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
+			_dev.PCD_WriteRegister(BitFramingReg, (rxAlign << 4) + txLastBits);	// RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
 			
 			// Transmit the buffer and receive the response.
 			result = PCD_TransceiveData(buffer, bufferUsed, responseBuffer, &responseLength, &txLastBits, rxAlign);
 			if (result == STATUS_COLLISION) { // More than one PICC in the field => collision.
-				byte valueOfCollReg = PCD_ReadRegister(CollReg); // CollReg[7..0] bits are: ValuesAfterColl reserved CollPosNotValid CollPos[4:0]
+				byte valueOfCollReg = _dev.PCD_ReadRegister(CollReg); // CollReg[7..0] bits are: ValuesAfterColl reserved CollPosNotValid CollPos[4:0]
 				if (valueOfCollReg & 0x20) { // CollPosNotValid
 					return STATUS_COLLISION; // Without a valid collision position we cannot continue
 				}
@@ -552,11 +552,11 @@ MFRC522::StatusCode MFRC522Extended::PICC_PPS()
 	if (result == STATUS_OK)
 	{
 		// Enable CRC for T=CL
-		byte txReg = PCD_ReadRegister(TxModeReg) | 0x80;
-		byte rxReg = PCD_ReadRegister(RxModeReg) | 0x80;
+		byte txReg = _dev.PCD_ReadRegister(TxModeReg) | 0x80;
+		byte rxReg = _dev.PCD_ReadRegister(RxModeReg) | 0x80;
 
-		PCD_WriteRegister(TxModeReg, txReg);
-		PCD_WriteRegister(RxModeReg, rxReg);
+		_dev.PCD_WriteRegister(TxModeReg, txReg);
+		_dev.PCD_WriteRegister(RxModeReg, rxReg);
 	}
 
 	return result;
@@ -602,8 +602,8 @@ MFRC522::StatusCode MFRC522Extended::PICC_PPS(TagBitRates sendBitRate,	         
 		// Make sure it is an answer to our PPS
 		// We should receive our PPS byte and 2 CRC bytes
 		if ((ppsBufferSize == 3) && (ppsBuffer[0] == 0xD0)) {
-			byte txReg = PCD_ReadRegister(TxModeReg) & 0x8F;
-			byte rxReg = PCD_ReadRegister(RxModeReg) & 0x8F;
+			byte txReg = _dev.PCD_ReadRegister(TxModeReg) & 0x8F;
+			byte rxReg = _dev.PCD_ReadRegister(RxModeReg) & 0x8F;
 
 			// Set bit rate and enable CRC for T=CL
 			txReg = (txReg & 0x8F) | ((receiveBitRate & 0x03) << 4) | 0x80;
@@ -613,30 +613,30 @@ MFRC522::StatusCode MFRC522Extended::PICC_PPS(TagBitRates sendBitRate,	         
 			// From ConfigIsoType
 			//rxReg |= 0x06;
 
-			PCD_WriteRegister(TxModeReg, txReg);
-			PCD_WriteRegister(RxModeReg, rxReg);
+			_dev.PCD_WriteRegister(TxModeReg, txReg);
+			_dev.PCD_WriteRegister(RxModeReg, rxReg);
 
 			// At 212kBps
 			switch (sendBitRate) {
 				case BITRATE_212KBITS:
 					{
 						//PCD_WriteRegister(ModWidthReg, 0x13);
-						PCD_WriteRegister(ModWidthReg, 0x15);
+						_dev.PCD_WriteRegister(ModWidthReg, 0x15);
 					}
 					break;
 				case BITRATE_424KBITS:
 					{
-						PCD_WriteRegister(ModWidthReg, 0x0A);
+						_dev.PCD_WriteRegister(ModWidthReg, 0x0A);
 					}
 					break;
 				case BITRATE_848KBITS:
 					{
-						PCD_WriteRegister(ModWidthReg, 0x05);
+						_dev.PCD_WriteRegister(ModWidthReg, 0x05);
 					}
 					break;
 				default:
 					{
-						PCD_WriteRegister(ModWidthReg, 0x26); // Default value
+						_dev.PCD_WriteRegister(ModWidthReg, 0x26); // Default value
 					}
 					break;
 			}
@@ -691,7 +691,7 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(PcbBlock *send, PcbBlock *ba
 	}
 
 	// Is the CRC enabled for transmission?
-	byte txModeReg = PCD_ReadRegister(TxModeReg);
+	byte txModeReg = _dev.PCD_ReadRegister(TxModeReg);
 	if ((txModeReg & 0x80) != 0x80) {
 		// Calculate CRC_A
 		result = PCD_CalculateCRC(outBuffer, outBufferOffset, &outBuffer[outBufferOffset]);
@@ -724,7 +724,7 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(PcbBlock *send, PcbBlock *ba
 	}
 
 	// Check if CRC is taken care of by MFRC522
-	byte rxModeReg = PCD_ReadRegister(TxModeReg);
+	byte rxModeReg = _dev.PCD_ReadRegister(TxModeReg);
 	if ((rxModeReg & 0x80) != 0x80) {
 		Serial.print("CRC is not taken care of by MFRC522: ");
 		Serial.println(rxModeReg, HEX);
@@ -821,7 +821,7 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(TagInfo *tag, byte *sendData
 	// Swap block number on success
 	tag->blockNumber = !tag->blockNumber;
 
-	if (backData && (backLen > 0)) {
+	if (backData && (backLen != 0)) {
 		if (*backLen < in.inf.size)
 			return STATUS_NO_ROOM;
 
@@ -844,7 +844,7 @@ MFRC522::StatusCode MFRC522Extended::TCL_Transceive(TagInfo *tag, byte *sendData
 		if (result != STATUS_OK)
 			return result;
 
-		if (backData && (backLen > 0)) {
+		if (backData && (backLen != 0)) {
 			if ((*backLen + ackDataSize) > totalBackLen)
 				return STATUS_NO_ROOM;
 
@@ -1104,10 +1104,10 @@ bool MFRC522Extended::PICC_IsNewCardPresent() {
 	byte bufferSize = sizeof(bufferATQA);
 
 	// Reset baud rates
-	PCD_WriteRegister(TxModeReg, 0x00);
-	PCD_WriteRegister(RxModeReg, 0x00);
+	_dev.PCD_WriteRegister(TxModeReg, 0x00);
+	_dev.PCD_WriteRegister(RxModeReg, 0x00);
 	// Reset ModWidthReg
-	PCD_WriteRegister(ModWidthReg, 0x26);
+	_dev.PCD_WriteRegister(ModWidthReg, 0x26);
 
 	MFRC522::StatusCode result = PICC_RequestA(bufferATQA, &bufferSize);
 

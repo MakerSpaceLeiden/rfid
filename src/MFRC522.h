@@ -83,6 +83,11 @@
 #include <Arduino.h>
 #include <SPI.h>
 
+#ifndef UNUSED_PIN
+#define UNUSED_PIN (UINT8_MAX)
+#endif
+
+// Probaly no longer in use.
 #define MFRC522_SPICLOCK SPI_CLOCK_DIV4			// MFRC522 accept upto 10MHz
 
 // Firmware data for self-test
@@ -138,12 +143,17 @@ const byte FM17522_firmware_reference[] PROGMEM = {
 	0x56, 0x9A, 0x98, 0x82, 0x26, 0xEA, 0x2A, 0x62
 };
 
+#ifndef MFRC522_I2C_DEFAULT_ADDR
+#define MFRC522_I2C_DEFAULT_ADDR (0x28) // 0x3C also common at AliExpress
+#endif
+
+class MFRC522_BUS_DEVICE; // glue for a i2c, spi or uart device. actual calls read/write the registers.
+class MFRC522_SPI; // forward declaration for the `default' SPI.
 class MFRC522 {
 public:
 	// Size of the MFRC522 FIFO
 	static constexpr byte FIFO_SIZE = 64;		// The FIFO is 64 bytes.
 	// Default value for unused pin
-	static constexpr uint8_t UNUSED_PIN = UINT8_MAX;
 
 	// MFRC522 registers. Described in chapter 9 of the datasheet.
 	// When using SPI all addresses are shifted one bit left in the "SPI address byte" (section 8.1.2.3)
@@ -330,21 +340,18 @@ public:
 	Uid uid;								// Used by PICC_ReadCardSerial().
 	
 	/////////////////////////////////////////////////////////////////////////////////////
-	// Functions for setting up the Arduino
-	/////////////////////////////////////////////////////////////////////////////////////
-	MFRC522();
-	DEPRECATED_MSG("use MFRC522(byte chipSelectPin, byte resetPowerDownPin)")
+	MFRC522(MFRC522_BUS_DEVICE & dev);
+
+	// SPI legacy interface.
+	MFRC522() DEPRECATED_MSG("use MFRC522(MFRC522_BUS_DEVICE bus_device)");
 	MFRC522(byte resetPowerDownPin);
 	MFRC522(byte chipSelectPin, byte resetPowerDownPin);
-	
+
 	/////////////////////////////////////////////////////////////////////////////////////
-	// Basic interface functions for communicating with the MFRC522
+	// Basic interface functions for communicating with the MFRC522; provided
+        // on top of the ones provided by the device on the bus.
 	/////////////////////////////////////////////////////////////////////////////////////
-	void PCD_WriteRegister(PCD_Register reg, byte value);
-	void PCD_WriteRegister(PCD_Register reg, byte count, byte *values);
-	byte PCD_ReadRegister(PCD_Register reg);
-	void PCD_ReadRegister(PCD_Register reg, byte count, byte *values, byte rxAlign = 0);
-	void PCD_SetRegisterBitMask(PCD_Register reg, byte mask);
+        void PCD_SetRegisterBitMask(PCD_Register reg, byte mask);
 	void PCD_ClearRegisterBitMask(PCD_Register reg, byte mask);
 	StatusCode PCD_CalculateCRC(byte *data, byte length, byte *result);
 	
@@ -432,9 +439,60 @@ public:
 	virtual bool PICC_ReadCardSerial();
 	
 protected:
-	byte _chipSelectPin;		// Arduino pin connected to MFRC522's SPI slave select input (Pin 24, NSS, active low)
-	byte _resetPowerDownPin;	// Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
+        MFRC522_BUS_DEVICE & _dev;
 	StatusCode MIFARE_TwoStepHelper(byte command, byte blockAddr, int32_t data);
+};
+
+class MFRC522_BUS_DEVICE {
+public:
+	virtual bool PCD_Init();
+        virtual void PCD_WriteRegister(MFRC522::PCD_Register reg, byte value);
+        virtual void PCD_WriteRegister(MFRC522::PCD_Register reg, byte count, byte *values);
+        virtual byte PCD_ReadRegister(MFRC522::PCD_Register reg);
+        virtual void PCD_ReadRegister(MFRC522::PCD_Register reg, byte count, byte *values, byte rxAlign = 0);
+};
+
+#include <Wire.h>
+class MFRC522_I2C : MFRC522_BUS_DEVICE {
+public:
+
+        MFRC522_I2C(byte resetPowerDownPin = UNUSED_PIN,
+                byte chipAddress = MFRC522_I2C_DEFAULT_ADDR, TwoWire & wire = Wire)
+                : _resetPowerDownPin(resetPowerDownPin),  _chipAddress(chipAddress), _wire(wire) {};
+	bool PCD_Init();
+        void PCD_WriteRegister(MFRC522::PCD_Register reg, byte value);
+        void PCD_WriteRegister(MFRC522::PCD_Register reg, byte count, byte *values);
+        byte PCD_ReadRegister(MFRC522::PCD_Register reg);
+        void PCD_ReadRegister(MFRC522::PCD_Register reg, byte count, byte *values, byte rxAlign = 0);
+private:
+        byte _resetPowerDownPin;        // Optional, soft-rest will be used if set to UNUSEDPIN
+        byte _chipAddress;              // Default is 0x3C
+        TwoWire & _wire;                // Bus, defaults to the first i2c bus: Wire;
+};
+
+#include <SPI.h>
+class MFRC522_SPI : public MFRC522_BUS_DEVICE {
+public:
+        MFRC522_SPI(const byte chipSelectPin, const byte resetPowerDownPin = UNUSED_PIN,
+                        SPIClass *spiClass = &SPI, 
+			const SPISettings spiSettings = SPISettings(SPI_CLOCK_DIV4, MSBFIRST, SPI_MODE0))
+                     : _chipSelectPin(chipSelectPin),
+			_resetPowerDownPin(resetPowerDownPin),
+                        _spiClass(spiClass), 
+			_spiSettings(spiSettings) {};
+protected:
+	// Pins
+	byte _chipSelectPin;		
+	byte _resetPowerDownPin; // optional; software set is used when set to UNUSED_PIN.
+	
+	// SPI communication
+	SPIClass *_spiClass;		// defaults to the first SPI bus.
+	const SPISettings _spiSettings;	// SPI settings; defaults to a speed known to work.
+        bool PCD_Init();
+        void PCD_WriteRegister(MFRC522::PCD_Register reg, byte value);
+        void PCD_WriteRegister(MFRC522::PCD_Register reg, byte count, byte *values);
+        byte PCD_ReadRegister(MFRC522::PCD_Register reg);
+        void PCD_ReadRegister(MFRC522::PCD_Register reg, byte count, byte *values, byte rxAlign = 0);
 };
 
 #endif
