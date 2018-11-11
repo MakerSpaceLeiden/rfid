@@ -9,16 +9,14 @@
 
 MFRC522::MFRC522(MFRC522_BUS_DEVICE & dev) : _dev(dev) {};
 
-#if 0
 // SPI  (legacy interface
 // Note: 'SS' is defined in arduino_pins.h
 MFRC522::MFRC522() : MFRC522(SS, UINT8_MAX) {};
 MFRC522::MFRC522(byte resetPowerDownPin) : 
 	MFRC522(SS, resetPowerDownPin) {};
-MFRC522::MFRC522(byte chipSelectPin, byte resetPowerDownPin) 
-	: _dev(MFRC522_SPI(chipSelectPin,resetPowerDownPin)) {
+MFRC522::MFRC522(byte chipSelectPin, byte resetPowerDownPin) {
+	_dev  = MFRC522_SPI(chipSelectPin,resetPowerDownPin);
 };
-#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Basic interface functions for communicating with the MFRC522 are handled
