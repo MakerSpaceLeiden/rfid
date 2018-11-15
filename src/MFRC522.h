@@ -340,7 +340,7 @@ public:
 	Uid uid;								// Used by PICC_ReadCardSerial().
 	
 	/////////////////////////////////////////////////////////////////////////////////////
-	MFRC522(MFRC522_BUS_DEVICE & dev);
+	MFRC522(MFRC522_BUS_DEVICE * dev);
 
 	// SPI legacy interface.
 	MFRC522() DEPRECATED_MSG("use MFRC522(MFRC522_BUS_DEVICE bus_device)");
@@ -351,6 +351,11 @@ public:
 	// Basic interface functions for communicating with the MFRC522; provided
         // on top of the ones provided by the device on the bus.
 	/////////////////////////////////////////////////////////////////////////////////////
+        void PCD_WriteRegister(MFRC522::PCD_Register reg, byte value);
+        void PCD_WriteRegister(MFRC522::PCD_Register reg, byte count, byte *values);
+        byte PCD_ReadRegister(MFRC522::PCD_Register reg);
+        void PCD_ReadRegister(MFRC522::PCD_Register reg, byte count, byte *values, byte rxAlign = 0);
+
         void PCD_SetRegisterBitMask(PCD_Register reg, byte mask);
 	void PCD_ClearRegisterBitMask(PCD_Register reg, byte mask);
 	StatusCode PCD_CalculateCRC(byte *data, byte length, byte *result);
@@ -439,7 +444,7 @@ public:
 	virtual bool PICC_ReadCardSerial();
 	
 protected:
-        MFRC522_BUS_DEVICE & _dev;
+        MFRC522_BUS_DEVICE * _dev;
 	StatusCode MIFARE_TwoStepHelper(byte command, byte blockAddr, int32_t data);
 };
 

@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include "MFRC522.h"
 
-MFRC522::MFRC522(MFRC522_BUS_DEVICE & dev) : _dev(dev) {};
+MFRC522::MFRC522(MFRC522_BUS_DEVICE * dev) : _dev(dev) {};
 
 // SPI  (legacy interface
 // Note: 'SS' is defined in arduino_pins.h
@@ -15,13 +15,26 @@ MFRC522::MFRC522() : MFRC522(SS, UINT8_MAX) {};
 MFRC522::MFRC522(byte resetPowerDownPin) : 
 	MFRC522(SS, resetPowerDownPin) {};
 MFRC522::MFRC522(byte chipSelectPin, byte resetPowerDownPin) {
-	_dev  = MFRC522_SPI(chipSelectPin,resetPowerDownPin);
+	_dev  = new MFRC522_SPI(chipSelectPin,resetPowerDownPin);
 };
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Basic interface functions for communicating with the MFRC522 are handled
 // by the MFRC522 bus class. Below are a few convenient aggregates.
 /////////////////////////////////////////////////////////////////////////////////////
+
+void MFRC522::PCD_WriteRegister(MFRC522::PCD_Register reg, byte value) {
+    _dev->PCD_WriteRegister(reg,value);
+};
+void MFRC522::PCD_WriteRegister(MFRC522::PCD_Register reg, byte count, byte *values) {
+    _dev->PCD_WriteRegister(reg,count,values);
+};
+byte MFRC522::PCD_ReadRegister(MFRC522::PCD_Register reg) {
+    return _dev->PCD_ReadRegister(reg);
+};
+void MFRC522::PCD_ReadRegister(MFRC522::PCD_Register reg, byte count, byte *values, byte rxAlign) {
+    _dev->PCD_ReadRegister(reg,count,values,rxAlign);
+};
 
 /**
  * Sets the bits given in mask in register reg.
@@ -30,8 +43,8 @@ void MFRC522::PCD_SetRegisterBitMask(  PCD_Register reg,  ///< The register to u
     byte mask                       ///< The bits to set.
 ) { 
        byte tmp;
-       tmp = _dev.PCD_ReadRegister(reg);
-       _dev.PCD_WriteRegister(reg, tmp | mask);                     // set bit mask
+       tmp = _dev->PCD_ReadRegister(reg);
+       _dev->PCD_WriteRegister(reg, tmp | mask);                     // set bit mask
 } // End PCD_SetRegisterBitMask()
 
 
@@ -42,8 +55,8 @@ void MFRC522::PCD_ClearRegisterBitMask(	PCD_Register reg,	///< The register to u
 										byte mask			///< The bits to clear.
 									  ) {
 	byte tmp;
-	tmp = _dev.PCD_ReadRegister(reg);
-	_dev.PCD_WriteRegister(reg, tmp & (~mask));		// clear bit mask
+	tmp = _dev->PCD_ReadRegister(reg);
+	_dev->PCD_WriteRegister(reg, tmp & (~mask));		// clear bit mask
 } // End PCD_ClearRegisterBitMask()
 
 
@@ -56,11 +69,11 @@ MFRC522::StatusCode MFRC522::PCD_CalculateCRC(	byte *data,		///< In: Pointer to 
 												byte length,	///< In: The number of bytes to transfer.
 												byte *result	///< Out: Pointer to result buffer. Result is written to result[0..1], low byte first.
 					 ) {
-	_dev.PCD_WriteRegister(CommandReg, PCD_Idle);		// Stop any active command.
-	_dev.PCD_WriteRegister(DivIrqReg, 0x04);				// Clear the CRCIRq interrupt request bit
-	_dev.PCD_WriteRegister(FIFOLevelReg, 0x80);			// FlushBuffer = 1, FIFO initialization
-	_dev.PCD_WriteRegister(FIFODataReg, length, data);	// Write data to the FIFO
-	_dev.PCD_WriteRegister(CommandReg, PCD_CalcCRC);		// Start the calculation
+	_dev->PCD_WriteRegister(CommandReg, PCD_Idle);		// Stop any active command.
+	_dev->PCD_WriteRegister(DivIrqReg, 0x04);				// Clear the CRCIRq interrupt request bit
+	_dev->PCD_WriteRegister(FIFOLevelReg, 0x80);			// FlushBuffer = 1, FIFO initialization
+	_dev->PCD_WriteRegister(FIFODataReg, length, data);	// Write data to the FIFO
+	_dev->PCD_WriteRegister(CommandReg, PCD_CalcCRC);		// Start the calculation
 	
 	// Wait for the CRC calculation to complete. Each iteration of the while-loop takes 17.73μs.
 	// TODO check/modify for other architectures than Arduino Uno 16bit
@@ -68,12 +81,12 @@ MFRC522::StatusCode MFRC522::PCD_CalculateCRC(	byte *data,		///< In: Pointer to 
 	// Wait for the CRC calculation to complete. Each iteration of the while-loop takes 17.73us.
 	for (uint16_t i = 5000; i > 0; i--) {
 		// DivIrqReg[7..0] bits are: Set2 reserved reserved MfinActIRq reserved CRCIRq reserved reserved
-		byte n = _dev.PCD_ReadRegister(DivIrqReg);
+		byte n = _dev->PCD_ReadRegister(DivIrqReg);
 		if (n & 0x04) {									// CRCIRq bit set - calculation done
-			_dev.PCD_WriteRegister(CommandReg, PCD_Idle);	// Stop calculating CRC for new content in the FIFO.
+			_dev->PCD_WriteRegister(CommandReg, PCD_Idle);	// Stop calculating CRC for new content in the FIFO.
 			// Transfer the result from the registers to the result buffer
-			result[0] = _dev.PCD_ReadRegister(CRCResultRegL);
-			result[1] = _dev.PCD_ReadRegister(CRCResultRegH);
+			result[0] = _dev->PCD_ReadRegister(CRCResultRegL);
+			result[1] = _dev->PCD_ReadRegister(CRCResultRegH);
 			return STATUS_OK;
 		}
 	}
@@ -90,25 +103,25 @@ MFRC522::StatusCode MFRC522::PCD_CalculateCRC(	byte *data,		///< In: Pointer to 
  * Initializes the MFRC522 chip.
  */
 void MFRC522::PCD_Init() {
-	if (!_dev.PCD_Init())
+	if (!_dev->PCD_Init())
 		PCD_Reset();
 	
 	// Reset baud rates
-	_dev.PCD_WriteRegister(TxModeReg, 0x00);
-	_dev.PCD_WriteRegister(RxModeReg, 0x00);
+	_dev->PCD_WriteRegister(TxModeReg, 0x00);
+	_dev->PCD_WriteRegister(RxModeReg, 0x00);
 	// Reset ModWidthReg
-	_dev.PCD_WriteRegister(ModWidthReg, 0x26);
+	_dev->PCD_WriteRegister(ModWidthReg, 0x26);
 
 	// When communicating with a PICC we need a timeout if something goes wrong.
 	// f_timer = 13.56 MHz / (2*TPreScaler+1) where TPreScaler = [TPrescaler_Hi:TPrescaler_Lo].
 	// TPrescaler_Hi are the four low bits in TModeReg. TPrescaler_Lo is TPrescalerReg.
-	_dev.PCD_WriteRegister(TModeReg, 0x80);			// TAuto=1; timer starts automatically at the end of the transmission in all communication modes at all speeds
-	_dev.PCD_WriteRegister(TPrescalerReg, 0xA9);		// TPreScaler = TModeReg[3..0]:TPrescalerReg, ie 0x0A9 = 169 => f_timer=40kHz, ie a timer period of 25μs.
-	_dev.PCD_WriteRegister(TReloadRegH, 0x03);		// Reload timer with 0x3E8 = 1000, ie 25ms before timeout.
-	_dev.PCD_WriteRegister(TReloadRegL, 0xE8);
+	_dev->PCD_WriteRegister(TModeReg, 0x80);			// TAuto=1; timer starts automatically at the end of the transmission in all communication modes at all speeds
+	_dev->PCD_WriteRegister(TPrescalerReg, 0xA9);		// TPreScaler = TModeReg[3..0]:TPrescalerReg, ie 0x0A9 = 169 => f_timer=40kHz, ie a timer period of 25μs.
+	_dev->PCD_WriteRegister(TReloadRegH, 0x03);		// Reload timer with 0x3E8 = 1000, ie 25ms before timeout.
+	_dev->PCD_WriteRegister(TReloadRegL, 0xE8);
 	
-	_dev.PCD_WriteRegister(TxASKReg, 0x40);		// Default 0x00. Force a 100 % ASK modulation independent of the ModGsPReg register setting
-	_dev.PCD_WriteRegister(ModeReg, 0x3D);		// Default 0x3F. Set the preset value for the CRC coprocessor for the CalcCRC command to 0x6363 (ISO 14443-3 part 6.2.4)
+	_dev->PCD_WriteRegister(TxASKReg, 0x40);		// Default 0x00. Force a 100 % ASK modulation independent of the ModGsPReg register setting
+	_dev->PCD_WriteRegister(ModeReg, 0x3D);		// Default 0x3F. Set the preset value for the CRC coprocessor for the CalcCRC command to 0x6363 (ISO 14443-3 part 6.2.4)
 	PCD_AntennaOn();						// Enable the antenna driver pins TX1 and TX2 (they were disabled by the reset)
 } // End PCD_Init()
 
@@ -116,7 +129,7 @@ void MFRC522::PCD_Init() {
  * Performs a soft reset on the MFRC522 chip and waits for it to be ready again.
  */
 void MFRC522::PCD_Reset() {
-	_dev.PCD_WriteRegister(CommandReg, PCD_SoftReset);	// Issue the SoftReset command.
+	_dev->PCD_WriteRegister(CommandReg, PCD_SoftReset);	// Issue the SoftReset command.
 	// The datasheet does not mention how long the SoftRest command takes to complete.
 	// But the MFRC522 might have been in soft power-down mode (triggered by bit 4 of CommandReg) 
 	// Section 8.8.2 in the datasheet says the oscillator start-up time is the start up time of the crystal + 37,74μs. Let us be generous: 50ms.
@@ -124,7 +137,7 @@ void MFRC522::PCD_Reset() {
 	do {
 		// Wait for the PowerDown bit in CommandReg to be cleared (max 3x50ms)
 		delay(50);
-	} while ((_dev.PCD_ReadRegister(CommandReg) & (1 << 4)) && (++count) < 3);
+	} while ((_dev->PCD_ReadRegister(CommandReg) & (1 << 4)) && (++count) < 3);
 } // End PCD_Reset()
 
 /**
@@ -132,9 +145,9 @@ void MFRC522::PCD_Reset() {
  * After a reset these pins are disabled.
  */
 void MFRC522::PCD_AntennaOn() {
-	byte value = _dev.PCD_ReadRegister(TxControlReg);
+	byte value = _dev->PCD_ReadRegister(TxControlReg);
 	if ((value & 0x03) != 0x03) {
-		_dev.PCD_WriteRegister(TxControlReg, value | 0x03);
+		_dev->PCD_WriteRegister(TxControlReg, value | 0x03);
 	}
 } // End PCD_AntennaOn()
 
@@ -153,7 +166,7 @@ void MFRC522::PCD_AntennaOff() {
  * @return Value of the RxGain, scrubbed to the 3 bits used.
  */
 byte MFRC522::PCD_GetAntennaGain() {
-	return _dev.PCD_ReadRegister(RFCfgReg) & (0x07<<4);
+	return _dev->PCD_ReadRegister(RFCfgReg) & (0x07<<4);
 } // End PCD_GetAntennaGain()
 
 /**
@@ -181,18 +194,18 @@ bool MFRC522::PCD_PerformSelfTest() {
 	
 	// 2. Clear the internal buffer by writing 25 bytes of 00h
 	byte ZEROES[25] = {0x00};
-	_dev.PCD_WriteRegister(FIFOLevelReg, 0x80);		// flush the FIFO buffer
-	_dev.PCD_WriteRegister(FIFODataReg, 25, ZEROES);	// write 25 bytes of 00h to FIFO
-	_dev.PCD_WriteRegister(CommandReg, PCD_Mem);		// transfer to internal buffer
+	_dev->PCD_WriteRegister(FIFOLevelReg, 0x80);		// flush the FIFO buffer
+	_dev->PCD_WriteRegister(FIFODataReg, 25, ZEROES);	// write 25 bytes of 00h to FIFO
+	_dev->PCD_WriteRegister(CommandReg, PCD_Mem);		// transfer to internal buffer
 	
 	// 3. Enable self-test
-	_dev.PCD_WriteRegister(AutoTestReg, 0x09);
+	_dev->PCD_WriteRegister(AutoTestReg, 0x09);
 	
 	// 4. Write 00h to FIFO buffer
-	_dev.PCD_WriteRegister(FIFODataReg, 0x00);
+	_dev->PCD_WriteRegister(FIFODataReg, 0x00);
 	
 	// 5. Start self-test by issuing the CalcCRC command
-	_dev.PCD_WriteRegister(CommandReg, PCD_CalcCRC);
+	_dev->PCD_WriteRegister(CommandReg, PCD_CalcCRC);
 	
 	// 6. Wait for self-test to complete
 	byte n;
@@ -204,23 +217,23 @@ bool MFRC522::PCD_PerformSelfTest() {
 		// so one can't reliably use DivIrqReg to check for completion.
 		// It is reported that some devices does not trigger CRCIRq flag
 		// during selftest.
-		n = _dev.PCD_ReadRegister(FIFOLevelReg);
+		n = _dev->PCD_ReadRegister(FIFOLevelReg);
 		if (n >= 64) {
 			break;
 		}
 	}
-	_dev.PCD_WriteRegister(CommandReg, PCD_Idle);		// Stop calculating CRC for new content in the FIFO.
+	_dev->PCD_WriteRegister(CommandReg, PCD_Idle);		// Stop calculating CRC for new content in the FIFO.
 	
 	// 7. Read out resulting 64 bytes from the FIFO buffer.
 	byte result[64];
-	_dev.PCD_ReadRegister(FIFODataReg, 64, result, 0);
+	_dev->PCD_ReadRegister(FIFODataReg, 64, result, 0);
 	
 	// Auto self-test done
 	// Reset AutoTestReg register to be 0 again. Required for normal operation.
-	_dev.PCD_WriteRegister(AutoTestReg, 0x00);
+	_dev->PCD_WriteRegister(AutoTestReg, 0x00);
 	
 	// Determine firmware version (see section 9.3.4.8 in spec)
-	byte version = _dev.PCD_ReadRegister(VersionReg);
+	byte version = _dev->PCD_ReadRegister(VersionReg);
 	
 	// Pick the appropriate reference values
 	const byte *reference;
@@ -261,20 +274,20 @@ bool MFRC522::PCD_PerformSelfTest() {
 //For more details about power control, refer to the datasheet - page 33 (8.6)
 
 void MFRC522::PCD_SoftPowerDown(){//Note : Only soft power down mode is available throught software
-	byte val = _dev.PCD_ReadRegister(CommandReg); // Read state of the command register 
+	byte val = _dev->PCD_ReadRegister(CommandReg); // Read state of the command register 
 	val |= (1<<4);// set PowerDown bit ( bit 4 ) to 1 
-	_dev.PCD_WriteRegister(CommandReg, val);//write new value to the command register
+	_dev->PCD_WriteRegister(CommandReg, val);//write new value to the command register
 }
 
 void MFRC522::PCD_SoftPowerUp(){
-	byte val = _dev.PCD_ReadRegister(CommandReg); // Read state of the command register 
+	byte val = _dev->PCD_ReadRegister(CommandReg); // Read state of the command register 
 	val &= ~(1<<4);// set PowerDown bit ( bit 4 ) to 0 
-	_dev.PCD_WriteRegister(CommandReg, val);//write new value to the command register
+	_dev->PCD_WriteRegister(CommandReg, val);//write new value to the command register
 	// wait until PowerDown bit is cleared (this indicates end of wake up procedure) 
 	const uint32_t timeout = (uint32_t)millis() + 500;// create timer for timeout (just in case) 
 	
 	while(millis()<=timeout){ // set timeout to 500 ms 
-		val = _dev.PCD_ReadRegister(CommandReg);// Read state of the command register
+		val = _dev->PCD_ReadRegister(CommandReg);// Read state of the command register
 		if(!(val & (1<<4))){ // if powerdown bit is 0 
 			break;// wake up procedure is finished 
 		}
@@ -323,12 +336,12 @@ MFRC522::StatusCode MFRC522::PCD_CommunicateWithPICC(	byte command,		///< The co
 	byte txLastBits = validBits ? *validBits : 0;
 	byte bitFraming = (rxAlign << 4) + txLastBits;		// RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
 	
-	_dev.PCD_WriteRegister(CommandReg, PCD_Idle);			// Stop any active command.
-	_dev.PCD_WriteRegister(ComIrqReg, 0x7F);					// Clear all seven interrupt request bits
-	_dev.PCD_WriteRegister(FIFOLevelReg, 0x80);				// FlushBuffer = 1, FIFO initialization
-	_dev.PCD_WriteRegister(FIFODataReg, sendLen, sendData);	// Write sendData to the FIFO
-	_dev.PCD_WriteRegister(BitFramingReg, bitFraming);		// Bit adjustments
-	_dev.PCD_WriteRegister(CommandReg, command);				// Execute the command
+	_dev->PCD_WriteRegister(CommandReg, PCD_Idle);			// Stop any active command.
+	_dev->PCD_WriteRegister(ComIrqReg, 0x7F);					// Clear all seven interrupt request bits
+	_dev->PCD_WriteRegister(FIFOLevelReg, 0x80);				// FlushBuffer = 1, FIFO initialization
+	_dev->PCD_WriteRegister(FIFODataReg, sendLen, sendData);	// Write sendData to the FIFO
+	_dev->PCD_WriteRegister(BitFramingReg, bitFraming);		// Bit adjustments
+	_dev->PCD_WriteRegister(CommandReg, command);				// Execute the command
 	if (command == PCD_Transceive) {
 		PCD_SetRegisterBitMask(BitFramingReg, 0x80);	// StartSend=1, transmission of data starts
 	}
@@ -339,7 +352,7 @@ MFRC522::StatusCode MFRC522::PCD_CommunicateWithPICC(	byte command,		///< The co
 	// TODO check/modify for other architectures than Arduino Uno 16bit
 	uint16_t i;
 	for (i = 2000; i > 0; i--) {
-		byte n = _dev.PCD_ReadRegister(ComIrqReg);	// ComIrqReg[7..0] bits are: Set1 TxIRq RxIRq IdleIRq HiAlertIRq LoAlertIRq ErrIRq TimerIRq
+		byte n = _dev->PCD_ReadRegister(ComIrqReg);	// ComIrqReg[7..0] bits are: Set1 TxIRq RxIRq IdleIRq HiAlertIRq LoAlertIRq ErrIRq TimerIRq
 		if (n & waitIRq) {					// One of the interrupts that signal success has been set.
 			break;
 		}
@@ -353,7 +366,7 @@ MFRC522::StatusCode MFRC522::PCD_CommunicateWithPICC(	byte command,		///< The co
 	}
 	
 	// Stop now if any errors except collisions were detected.
-	byte errorRegValue = _dev.PCD_ReadRegister(ErrorReg); // ErrorReg[7..0] bits are: WrErr TempErr reserved BufferOvfl CollErr CRCErr ParityErr ProtocolErr
+	byte errorRegValue = _dev->PCD_ReadRegister(ErrorReg); // ErrorReg[7..0] bits are: WrErr TempErr reserved BufferOvfl CollErr CRCErr ParityErr ProtocolErr
 	if (errorRegValue & 0x13) {	 // BufferOvfl ParityErr ProtocolErr
 		return STATUS_ERROR;
 	}
@@ -362,13 +375,13 @@ MFRC522::StatusCode MFRC522::PCD_CommunicateWithPICC(	byte command,		///< The co
 	
 	// If the caller wants data back, get it from the MFRC522.
 	if (backData && backLen) {
-		byte n = _dev.PCD_ReadRegister(FIFOLevelReg);	// Number of bytes in the FIFO
+		byte n = _dev->PCD_ReadRegister(FIFOLevelReg);	// Number of bytes in the FIFO
 		if (n > *backLen) {
 			return STATUS_NO_ROOM;
 		}
 		*backLen = n;											// Number of bytes returned
-		_dev.PCD_ReadRegister(FIFODataReg, n, backData, rxAlign);	// Get received data from FIFO
-		_validBits = _dev.PCD_ReadRegister(ControlReg) & 0x07;		// RxLastBits[2:0] indicates the number of valid bits in the last received byte. If this value is 000b, the whole byte is valid.
+		_dev->PCD_ReadRegister(FIFODataReg, n, backData, rxAlign);	// Get received data from FIFO
+		_validBits = _dev->PCD_ReadRegister(ControlReg) & 0x07;		// RxLastBits[2:0] indicates the number of valid bits in the last received byte. If this value is 000b, the whole byte is valid.
 		if (validBits) {
 			*validBits = _validBits;
 		}
@@ -609,12 +622,12 @@ MFRC522::StatusCode MFRC522::PICC_Select(	Uid *uid,			///< Pointer to Uid struct
 			
 			// Set bit adjustments
 			rxAlign = txLastBits;											// Having a separate variable is overkill. But it makes the next line easier to read.
-			_dev.PCD_WriteRegister(BitFramingReg, (rxAlign << 4) + txLastBits);	// RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
+			_dev->PCD_WriteRegister(BitFramingReg, (rxAlign << 4) + txLastBits);	// RxAlign = BitFramingReg[6..4]. TxLastBits = BitFramingReg[2..0]
 			
 			// Transmit the buffer and receive the response.
 			result = PCD_TransceiveData(buffer, bufferUsed, responseBuffer, &responseLength, &txLastBits, rxAlign);
 			if (result == STATUS_COLLISION) { // More than one PICC in the field => collision.
-				byte valueOfCollReg = _dev.PCD_ReadRegister(CollReg); // CollReg[7..0] bits are: ValuesAfterColl reserved CollPosNotValid CollPos[4:0]
+				byte valueOfCollReg = _dev->PCD_ReadRegister(CollReg); // CollReg[7..0] bits are: ValuesAfterColl reserved CollPosNotValid CollPos[4:0]
 				if (valueOfCollReg & 0x20) { // CollPosNotValid
 					return STATUS_COLLISION; // Without a valid collision position we cannot continue
 				}
@@ -1204,7 +1217,7 @@ const __FlashStringHelper *MFRC522::PICC_GetTypeName(PICC_Type piccType	///< One
  */
 void MFRC522::PCD_DumpVersionToSerial() {
 	// Get the MFRC522 firmware version
-	byte v = _dev.PCD_ReadRegister(VersionReg);
+	byte v = _dev->PCD_ReadRegister(VersionReg);
 	Serial.print(F("Firmware Version: 0x"));
 	Serial.print(v, HEX);
 	// Lookup which version
@@ -1766,10 +1779,10 @@ bool MFRC522::PICC_IsNewCardPresent() {
 	byte bufferSize = sizeof(bufferATQA);
 
 	// Reset baud rates
-	_dev.PCD_WriteRegister(TxModeReg, 0x00);
-	_dev.PCD_WriteRegister(RxModeReg, 0x00);
+	_dev->PCD_WriteRegister(TxModeReg, 0x00);
+	_dev->PCD_WriteRegister(RxModeReg, 0x00);
 	// Reset ModWidthReg
-	_dev.PCD_WriteRegister(ModWidthReg, 0x26);
+	_dev->PCD_WriteRegister(ModWidthReg, 0x26);
 
 	MFRC522::StatusCode result = PICC_RequestA(bufferATQA, &bufferSize);
 	return (result == STATUS_OK || result == STATUS_COLLISION);
