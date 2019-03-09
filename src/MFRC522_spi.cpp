@@ -16,7 +16,7 @@ void MFRC522_SPI::PCD_WriteRegister(	MFRC522::PCD_Register reg,	///< The registe
 								) {
 	_spiClass->beginTransaction(_spiSettings);	// Set the settings to work with SPI bus
 	digitalWrite(_chipSelectPin, LOW);		// Select slave
-	_spiClass->transfer(reg);						// MSB == 0 is for writing. LSB is not used in address. Datasheet section 8.1.2.3.
+	_spiClass->transfer(reg << 1);						// MSB == 0 is for writing. LSB is not used in address. Datasheet section 8.1.2.3.
 	_spiClass->transfer(value);
 	digitalWrite(_chipSelectPin, HIGH);		// Release slave again
 	_spiClass->endTransaction(); // Stop using the SPI bus
@@ -32,7 +32,7 @@ void MFRC522_SPI::PCD_WriteRegister(	MFRC522::PCD_Register reg,	///< The registe
 								) {
 	_spiClass->beginTransaction(_spiSettings);	// Set the settings to work with SPI bus
 	digitalWrite(_chipSelectPin, LOW);		// Select slave
-	_spiClass->transfer(reg);						// MSB == 0 is for writing. LSB is not used in address. Datasheet section 8.1.2.3.
+	_spiClass->transfer(reg << 1);						// MSB == 0 is for writing. LSB is not used in address. Datasheet section 8.1.2.3.
 	for (byte index = 0; index < count; index++) {
 		_spiClass->transfer(values[index]);
 	}
@@ -49,7 +49,7 @@ byte MFRC522_SPI::PCD_ReadRegister(	MFRC522::PCD_Register reg	///< The register 
 	byte value;
 	_spiClass->beginTransaction(_spiSettings);	// Set the settings to work with SPI bus
 	digitalWrite(_chipSelectPin, LOW);			// Select slave
-	_spiClass->transfer(0x80 | reg);					// MSB == 1 is for reading. LSB is not used in address. Datasheet section 8.1.2.3.
+	_spiClass->transfer(0x80 | (reg << 1));					// MSB == 1 is for reading. LSB is not used in address. Datasheet section 8.1.2.3
 	value = _spiClass->transfer(0);					// Read the value back. Send 0 to stop reading.
 	digitalWrite(_chipSelectPin, HIGH);			// Release slave again
 	_spiClass->endTransaction(); // Stop using the SPI bus
@@ -69,7 +69,7 @@ void MFRC522_SPI::PCD_ReadRegister(	MFRC522::PCD_Register reg,	///< The register
 		return;
 	}
 	//Serial.print(F("Reading ")); 	Serial.print(count); Serial.println(F(" bytes from register."));
-	byte address = 0x80 | reg;				// MSB == 1 is for reading. LSB is not used in address. Datasheet section 8.1.2.3.
+	byte address = 0x80 | (reg << 1);				// MSB == 1 is for reading. LSB is not used in address. Datasheet section 8.1.2.3.
 	byte index = 0;							// Index in values array.
 	_spiClass->beginTransaction(_spiSettings);	// Set the settings to work with SPI bus
 	digitalWrite(_chipSelectPin, LOW);		// Select slave

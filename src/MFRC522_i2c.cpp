@@ -45,8 +45,9 @@ byte MFRC522_I2C::PCD_ReadRegister( MFRC522::PCD_Register reg        ///< The re
         _wire.write(reg);
         _wire.endTransmission();
 
-        _wire.requestFrom(_chipAddress, (uint8_t)1);
+        _wire.requestFrom(_chipAddress, (uint8_t)1 /* bytes to request */);
         value = _wire.read();
+
         return value;
 } // End PCD_ReadRegister()
 

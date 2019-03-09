@@ -103,14 +103,17 @@ MFRC522::StatusCode MFRC522::PCD_CalculateCRC(	byte *data,		///< In: Pointer to 
  * Initializes the MFRC522 chip.
  */
 void MFRC522::PCD_Init() {
-	if (!_dev->PCD_Init())
-		PCD_Reset();
-	
+	if (!_dev->PCD_Init()) {
+//		PCD_Reset();
+};
+
+#if 0
 	// Reset baud rates
 	_dev->PCD_WriteRegister(TxModeReg, 0x00);
 	_dev->PCD_WriteRegister(RxModeReg, 0x00);
 	// Reset ModWidthReg
 	_dev->PCD_WriteRegister(ModWidthReg, 0x26);
+#endif
 
 	// When communicating with a PICC we need a timeout if something goes wrong.
 	// f_timer = 13.56 MHz / (2*TPreScaler+1) where TPreScaler = [TPrescaler_Hi:TPrescaler_Lo].
