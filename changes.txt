@@ -1,5 +1,10 @@
 -- Add changes to unreleased tag until we make a release.
 
+28 March 2020, v1.5.0
+- Added support for I2C and UART readers
+- Added callback functions (so you do not need to poll)
+- Addex examples for these callbacks.
+
 27 Oct 2018, v1.4.3
 - Added counterfeit detection and hint about bad boards
 - Improved hardware based reset

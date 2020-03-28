@@ -14,7 +14,7 @@ Arduino library for MFRC522 and other RFID RC522 based modules.
 
 Read and write different types of Radio-Frequency IDentification (RFID) cards
 on your Arduino using a RC522 based reader connected via the Serial Peripheral
-Interface (SPI) interface.
+Interface (SPI) interface, the i2c interface or the UART.
 
 
 .. _development:
@@ -348,7 +348,7 @@ It has been extended with functionality to alter sector 0 on Chinese UID changea
 
 Maintained by miguelbalboa until 2016.
 Maintained by Rotzbua from 2016 until 2018.
-
+Updated b dirkx from mid 2018.
 
 .. _arduino: https://arduino.cc/
 .. _ebay: https://www.ebay.com/
