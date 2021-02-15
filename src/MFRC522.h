@@ -499,4 +499,18 @@ protected:
         void PCD_ReadRegister(MFRC522::PCD_Register reg, byte count, byte *values, byte rxAlign = 0);
 };
 
+class MFRC522_UART : public MFRC522_BUS_DEVICE {
+public:
+	MFRC522_UART(HardwareSerial &serial = Serial, byte _resetPowerDownPin = UNUSED_PIN);
+	bool PCD_Init();
+	void PCD_WriteRegister(MFRC522::PCD_Register reg, byte value);
+	void PCD_WriteRegister(MFRC522::PCD_Register reg, byte count, byte *values);
+	byte PCD_ReadRegister(MFRC522::PCD_Register reg);
+	void PCD_ReadRegister(MFRC522::PCD_Register reg, byte count, byte *values, byte rxAlign = 0);
+
+private:
+	byte _resetPowerDownPin;
+	HardwareSerial &_serialPort; // Defaults to Serial (standard serial port)
+};
+
 #endif
